@@ -15,6 +15,13 @@ fn eval(term: Term) -> i16 {
     }
 }
 
+
+trait Monad<T> {
+    fn unit(value: T) -> Self where Self: Sized;
+
+    fn bind<U, X>(&self, func: (FnOnce(T, U))) -> U where U: Sized + Monad<X>;
+}
+
 #[cfg(test)]
 mod tests {
     use Term::*;
