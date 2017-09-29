@@ -22,26 +22,26 @@ fn eval<V: std::ops::Div<Output=V>>(term: Term<V>) -> V {
     }
 }
 
-fn evalM<V: std::ops::Div<Output=V>, M: Sized + Monad<V>>(term: Term<V>) -> M {
+fn eval_m<V: std::ops::Div<Output=V>, M: Sized + Monad<V>>(term: Term<V>) -> M {
     use Term::*;
     match term {
         Con(val) => M::unit(val),
         Div(t1, t2) => {
             let left = *t1;
             let right = *t2;
-            evalM::<V, M>(left).bind(move |a| evalM::<V, M>(right).bind(move |b| M::unit(a / b)))
+            eval_m::<V, M>(left).bind(|a| eval_m::<V, M>(right).bind(|b| M::unit(a / b)))
         }
     }
 }
 
-fn evalI<V: Clone + std::ops::Div<Output=V>>(term: Term<V>) -> Identity<V> {
+fn eval_i<V: Clone + std::ops::Div<Output=V>>(term: Term<V>) -> Identity<V> {
     use Term::*;
     match term {
         Con(val) => Identity::unit(val),
         Div(t1, t2) => {
             let x = *t1;
             let y = *t2;
-            evalI(x).bind( |a| evalI(y).bind( |b| Identity::unit(a / b)))
+            eval_i(x).bind( |a| eval_i(y).bind( |b| Identity::unit(a / b)))
         }
     }
 }
@@ -56,11 +56,8 @@ impl <T: Sized + Clone> Monad<T> for Identity<T> {
         Identity { value: value }
     }
 
-    fn bind<F>(&self, func: F) -> Identity<T>
-        where F: FnOnce(T) -> Self {
-
-        let copy = self.value.clone();
-        func(copy)
+    fn bind<F>(&self, func: F) -> Identity<T> where F: FnOnce(T) -> Self {
+        func(self.value.clone())
     }
 }
 
@@ -83,7 +80,7 @@ mod tests {
     fn identity_monadic() {
         let formula = div(Con(34), div(Con(16), Con(2)));
 
-        let result = evalI(formula);
+        let result = eval_i(formula);
         println!("{:?}", result);
 
         assert_eq!(result.value, 4)
@@ -93,7 +90,7 @@ mod tests {
     fn general_monadic() {
         let formula = div(Con(34), div(Con(16), Con(2)));
 
-        let result: Identity<i16> = evalM(formula);
+        let result: Identity<i16> = eval_m(formula);
         println!("{:?}", result);
 
         assert_eq!(result.value, 4)
