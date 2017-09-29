@@ -15,11 +15,33 @@ fn eval(term: Term) -> i16 {
     }
 }
 
+fn eval2<M: Sized + Monad<i16>>(term: Term) -> M {
+    M::unit(1)
+}
 
-trait Monad<T> {
+
+trait Monad<T>: Sized {
     fn unit(value: T) -> Self where Self: Sized;
 
-    fn bind<U, X>(&self, func: (FnOnce(T, U))) -> U where U: Sized + Monad<X>;
+    fn bind<F>(&self, func: F) -> Self
+        where F: FnOnce(T) -> Self;
+}
+
+struct Identity<T> {
+    value: T
+}
+
+impl <T: Sized + Clone> Monad<T> for Identity<T> {
+    fn unit(value: T) -> Self where Self: Sized {
+        Identity { value: value }
+    }
+
+    fn bind<F>(&self, func: F) -> Identity<T>
+        where F: FnOnce(T) -> Self {
+
+        let copy = self.value.clone();
+        func(copy)
+    }
 }
 
 #[cfg(test)]
