@@ -1,3 +1,7 @@
+extern crate num_traits;
+
+use num_traits::Num;
+
 enum Term<VALUE> {
     Con(VALUE),
     Div(Box<Term<VALUE>>, Box<Term<VALUE>>)
@@ -14,7 +18,7 @@ trait Monad<T>: Sized {
         where F: FnOnce(T) -> Self;
 }
 
-fn eval<V: std::ops::Div<Output=V>>(term: Term<V>) -> V {
+fn eval<V: Num>(term: Term<V>) -> V {
     use Term::*;
     match term {
         Con(val) => val,
@@ -22,19 +26,23 @@ fn eval<V: std::ops::Div<Output=V>>(term: Term<V>) -> V {
     }
 }
 
-fn eval_m<V: std::ops::Div<Output=V>, M: Sized + Monad<V>>(term: Term<V>) -> M {
+fn eval_m<V, M>(term: Term<V>) -> M
+  where M: Sized + Monad<V>, V: Num {
     use Term::*;
     match term {
         Con(val) => M::unit(val),
         Div(t1, t2) => {
             let left = *t1;
             let right = *t2;
-            eval_m::<V, M>(left).bind(|a| eval_m::<V, M>(right).bind(|b| M::unit(a / b)))
+            eval_m::<V, M>(left).bind(|a| eval_m::<V, M>(right).bind(|b| {
+                if b == V::zero() { M::unit(V::zero()) }
+                else  { M::unit( a / b ) }
+            }))
         }
     }
 }
 
-fn eval_i<V: Clone + std::ops::Div<Output=V>>(term: Term<V>) -> Identity<V> {
+fn eval_i<V: Num + Clone>(term: Term<V>) -> Identity<V> {
     use Term::*;
     match term {
         Con(val) => Identity::unit(val),
