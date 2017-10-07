@@ -69,6 +69,25 @@ impl <T: Sized + Clone> Monad<T> for Identity<T> {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum Maybe<T> {
+    Some(T),
+    None
+}
+
+impl <T: Sized + Clone> Monad<T> for Maybe<T> {
+    fn unit(value: T) -> Self where Self: Sized {
+        Maybe::Some(value)
+    }
+
+    fn bind<F>(&self, func: F) -> Maybe<T> where F: FnOnce(T) -> Self {
+        match *self {
+            Maybe::Some(ref value) => func(value.clone()),
+            Maybe::None => Maybe::None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,13 +114,23 @@ mod tests {
     }
 
     #[test]
-    fn general_monadic() {
+    fn general_monadic_identity() {
         let formula = div(Con(34), div(Con(16), Con(2)));
 
         let result: Identity<i16> = eval_m(formula);
         println!("{:?}", result);
 
-        assert_eq!(result.value, 4)
+        assert_eq!(result.value, 4);
+    }
+
+    #[test]
+    fn general_monadic_maybe() {
+        let formula = div(Con(34), div(Con(16), Con(2)));
+
+        let result: Maybe<i16> = eval_m(formula);
+        println!("{:?}", result);
+
+        assert_eq!(result, Maybe::Some(4));
     }
 
 }
